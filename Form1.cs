@@ -1,9 +1,8 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Timers;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace kalkulator_zegar
 {
@@ -12,9 +11,12 @@ namespace kalkulator_zegar
         private System.Timers.Timer timer;
         private bool isAnalog = false;
         private Color clockColor = Color.Black;
+        private Color clockButtonColor = Color.LightGray;
+        private Color calcButtonColor = Color.LightGray;
 
         private Button btnToggleMode;
         private Button btnChangeColor;
+        private Button btnChangeCalcButtonColor;
 
         private Button[] calcButtons;
         private TextBox calcDisplay;
@@ -27,6 +29,24 @@ namespace kalkulator_zegar
             InitializeButtons();
             InitializeCalculator();
             SetButtonPositions();
+
+            this.Load += (s, e) =>
+            {
+                this.ActiveControl = null;
+                RemoveFocusFromAllControls(this);
+            };
+        }
+
+        private void RemoveFocusFromAllControls(Control parent)
+        {
+            foreach (Control ctrl in parent.Controls)
+            {
+                ctrl.TabStop = false;
+                ctrl.Enter += (s, e) => this.ActiveControl = null;
+
+                if (ctrl.HasChildren)
+                    RemoveFocusFromAllControls(ctrl);
+            }
         }
 
         private void InitializeClock()
@@ -102,6 +122,34 @@ namespace kalkulator_zegar
             }
         }
 
+        private void btnChangeCalcButtonColor_Click(object sender, EventArgs e)
+        {
+            using (ColorDialog colorDialog = new ColorDialog())
+            {
+                if (colorDialog.ShowDialog() == DialogResult.OK)
+                {
+                    calcButtonColor = colorDialog.Color;
+                    UpdateCalcButtonColors(calcButtonColor);
+                }
+            }
+        }
+
+        private void UpdateClockButtonColors(Color color)
+        {
+            btnToggleMode.BackColor = color;
+            btnChangeColor.BackColor = color;
+            btnChangeCalcButtonColor.BackColor = color;
+        }
+
+        private void UpdateCalcButtonColors(Color color)
+        {
+            foreach (var btn in calcButtons)
+            {
+                btn.BackColor = color;
+                btn.ForeColor = Color.Black;
+            }
+        }
+
         private void Form1_Resize(object sender, EventArgs e)
         {
             SetButtonPositions();
@@ -114,6 +162,7 @@ namespace kalkulator_zegar
 
             btnToggleMode.Location = new Point(clockX - 25, clockY + 50);
             btnChangeColor.Location = new Point(clockX - 25, clockY + 90);
+            btnChangeCalcButtonColor.Location = new Point(clockX - 25, clockY + 130);
 
             for (int i = 0; i < calcButtons.Length; i++)
             {
@@ -128,19 +177,36 @@ namespace kalkulator_zegar
             btnToggleMode = new Button
             {
                 Text = "Przełącz tryb",
-                Size = new Size(120, 30)
+                Size = new Size(120, 30),
+                TabStop = false
             };
             btnToggleMode.Click += new EventHandler(this.btnToggleMode_Click);
+            btnToggleMode.Enter += (s, e) => this.ActiveControl = null;
             this.Controls.Add(btnToggleMode);
 
             btnChangeColor = new Button
             {
-                Text = "Zmień kolor",
-                Size = new Size(120, 30)
+                Text = "Zmień kolor zegara",
+                Size = new Size(120, 30),
+                TabStop = false
             };
             btnChangeColor.Click += new EventHandler(this.btnChangeColor_Click);
+            btnChangeColor.Enter += (s, e) => this.ActiveControl = null;
             this.Controls.Add(btnChangeColor);
+
+            btnChangeCalcButtonColor = new Button
+            {
+                Text = "Kolor przycisków kalk.",
+                Size = new Size(120, 30),
+                TabStop = false
+            };
+            btnChangeCalcButtonColor.Click += new EventHandler(this.btnChangeCalcButtonColor_Click);
+            btnChangeCalcButtonColor.Enter += (s, e) => this.ActiveControl = null;
+            this.Controls.Add(btnChangeCalcButtonColor);
+
+            UpdateClockButtonColors(clockButtonColor);
         }
+
         //*************** KALKULATOR ***************************
         private void InitializeCalculator()
         {
@@ -150,7 +216,8 @@ namespace kalkulator_zegar
                 Location = new Point(20, 140),
                 Text = "",
                 ReadOnly = true,
-                Font = new Font("Arial", 16)
+                Font = new Font("Arial", 16),
+                TabStop = false
             };
             this.Controls.Add(calcDisplay);
 
@@ -169,9 +236,12 @@ namespace kalkulator_zegar
                 calcButtons[i] = new Button
                 {
                     Text = buttonLabels[i],
-                    Size = new Size(50, 50)
+                    Size = new Size(50, 50),
+                    TabStop = false,
+                    BackColor = calcButtonColor
                 };
                 calcButtons[i].Click += new EventHandler(CalcButton_Click);
+                calcButtons[i].Enter += (s, e) => this.ActiveControl = null;
                 this.Controls.Add(calcButtons[i]);
             }
 
@@ -207,7 +277,7 @@ namespace kalkulator_zegar
                 calcInput = "";
                 calcDisplay.Text = "";
             }
-            else if(input == "C")
+            else if (input == "C")
             {
                 if (calcInput.Length > 0)
                 {
@@ -219,8 +289,7 @@ namespace kalkulator_zegar
             {
                 if (double.TryParse(calcInput, System.Globalization.NumberStyles.Float, new System.Globalization.CultureInfo("pl-PL"), out double num))
                 {
-                
-                    calcInput = (num*num).ToString("G", new System.Globalization.CultureInfo("pl-PL"));
+                    calcInput = (num * num).ToString("G", new System.Globalization.CultureInfo("pl-PL"));
                     calcDisplay.Text = calcInput;
                 }
                 else
@@ -240,7 +309,6 @@ namespace kalkulator_zegar
                     calcDisplay.Text = "Błąd!";
                 }
             }
-
             else
             {
                 calcInput += input;
@@ -250,19 +318,17 @@ namespace kalkulator_zegar
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Shift && e.KeyCode == Keys.D8)
+            if (e.Shift && e.KeyCode == Keys.D8) { HandleCalcInput("*"); return; }
+            else if (e.Shift && e.KeyCode == Keys.D9) { HandleCalcInput("("); return; }
+            else if (e.Shift && e.KeyCode == Keys.D0) { HandleCalcInput(")"); return; }
+            else if (e.Shift && e.KeyCode == Keys.Oemplus) { HandleCalcInput("+"); return; }
+            else if (!e.Shift && e.KeyCode == Keys.OemMinus) { HandleCalcInput("-"); return; }
+            else if (!e.Shift && e.KeyCode == Keys.Oemplus) { HandleCalcInput("="); return; }
+            else if (!e.Shift && e.KeyCode == Keys.OemQuestion) { HandleCalcInput("/"); return; }
+
+            if (e.KeyCode == Keys.Enter)
             {
-                HandleCalcInput("*");
-                return;
-            }
-            else if (e.Shift && e.KeyCode == Keys.D9)
-            {
-                HandleCalcInput("(");
-                return;
-            }
-            else if (e.Shift && e.KeyCode == Keys.D0)
-            {
-                HandleCalcInput(")");
+                HandleCalcInput("=");
                 return;
             }
 
@@ -278,32 +344,12 @@ namespace kalkulator_zegar
             }
             else if (e.KeyCode == Keys.Oemcomma || e.KeyCode == Keys.Decimal)
             {
-                if (!calcInput.Contains(","))
-                {
-                    
-                    HandleCalcInput(",");
-                }
+                if (!calcInput.Contains(",")) HandleCalcInput(",");
             }
-            else if (e.KeyCode == Keys.Add)
-            {
-                HandleCalcInput("+");
-            }
-            else if (e.KeyCode == Keys.Subtract)
-            {
-                HandleCalcInput("-");
-            }
-            else if (e.KeyCode == Keys.Multiply)
-            {
-                HandleCalcInput("*");
-            }
-            else if (e.KeyCode == Keys.Divide)
-            {
-                HandleCalcInput("/");
-            }
-            else if (e.KeyCode == Keys.Enter)
-            {
-                HandleCalcInput("=");
-            }
+            else if (e.KeyCode == Keys.Add) { HandleCalcInput("+"); }
+            else if (e.KeyCode == Keys.Subtract) { HandleCalcInput("-"); }
+            else if (e.KeyCode == Keys.Multiply) { HandleCalcInput("*"); }
+            else if (e.KeyCode == Keys.Divide) { HandleCalcInput("/"); }
             else if (e.KeyCode == Keys.Back)
             {
                 if (calcInput.Length > 0)
@@ -312,8 +358,17 @@ namespace kalkulator_zegar
                     calcDisplay.Text = calcInput;
                 }
             }
-
-           
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
