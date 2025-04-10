@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Timers;
@@ -235,6 +235,7 @@ namespace kalkulator_zegar
             {
                 calcButtons[i] = new Button
                 {
+                    Font = new Font("Arial", 12, FontStyle.Bold),
                     Text = buttonLabels[i],
                     Size = new Size(50, 50),
                     TabStop = false,
@@ -361,14 +362,3 @@ namespace kalkulator_zegar
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
